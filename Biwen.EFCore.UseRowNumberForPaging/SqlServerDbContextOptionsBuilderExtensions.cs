@@ -1,4 +1,4 @@
-﻿namespace EntityFrameworkCore.UseRowNumberForPaging
+﻿namespace Biwen.EFCore.UseRowNumberForPaging
 {
     public static class SqlServerDbContextOptionsBuilderExtensions
     {

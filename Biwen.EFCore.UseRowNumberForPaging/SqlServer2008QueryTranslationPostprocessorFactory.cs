@@ -1,4 +1,4 @@
-﻿namespace EntityFrameworkCore.UseRowNumberForPaging
+﻿namespace Biwen.EFCore.UseRowNumberForPaging
 {
     using System.Reflection;
     public class SqlServer2008QueryTranslationPostprocessorFactory : IQueryTranslationPostprocessorFactory
