@@ -6,5 +6,10 @@ Bring back support for [UseRowNumberForPaging](https://docs.microsoft.com/en-us/
 
 The same as original UseRowNumberForPaging method
 ```c#
+// using
+using EntityFrameworkCore.UseRowNumberForPaging;
+
+// UseRowNumberForPaging()
 optionsBuilder.UseSqlServer("connection string", i => i.UseRowNumberForPaging());
+
 ```
