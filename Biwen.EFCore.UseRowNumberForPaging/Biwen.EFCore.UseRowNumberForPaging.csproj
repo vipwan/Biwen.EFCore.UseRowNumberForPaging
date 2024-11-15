@@ -1,32 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
-		<Version>1.0.0</Version>
+		<TargetFrameworks>net6.0;net8.0;net9.0</TargetFrameworks>
+		<Version>2.0.0</Version>
 		<Authors>万雅虎</Authors>
+		<LangVersion>latest</LangVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<RepositoryUrl>https://github.com/vipwan/Biwen.EFCore.UseRowNumberForPaging</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/vipwan/Biwen.EFCore.UseRowNumberForPaging</PackageProjectUrl>
-		<Description>Bring back support for UseRowNumberForPaging in EntityFrameworkCore 8.0/7.0/6.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005.</Description>
+		<Description>Bring back support for UseRowNumberForPaging in EntityFrameworkCore 9.0/8.0/7.0/6.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005.</Description>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<AssemblyVersion>1.0.0</AssemblyVersion>
-		<FileVersion>1.0.0</FileVersion>
+		<AssemblyVersion>2.0.0</AssemblyVersion>
+		<FileVersion>2.0.0</FileVersion>
 	</PropertyGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.0" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.0" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+	<ItemGroup>
+		<PackageReference Include="Biwen.AutoClassGen" Version="1.5.3" PrivateAssets="all" />
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="[6.0.36,8.0.0)" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="[6.0.36,8.0.0)" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="[8.0.11,9.0.0)" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="[8.0.11,9.0.0)" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+	</ItemGroup>
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
