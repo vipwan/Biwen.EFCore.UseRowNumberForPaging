@@ -3,13 +3,16 @@
 // See the LICENSE file in the project root for more information.
 // Biwen.EFCore.UseRowNumberForPaging Author: 万雅虎, Github: https://github.com/vipwan
 // Bring back support for UseRowNumberForPaging in EntityFrameworkCore 9.0/8.0/7.0/6.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005.
-// Modify Date: 2024-11-15 14:42:01 SqlServer2008QueryTranslationPostprocessorFactory.cs
+// Modify Date: 2024-11-25 18:12:51 SqlServer2008QueryTranslationPostprocessorFactory`net9.cs
 
-#if !NET9_0_OR_GREATER
+#if NET9_0_OR_GREATER
+
+#pragma warning disable EF1001 // Internal EF Core API usage.
 
 namespace Biwen.EFCore.UseRowNumberForPaging;
 
 using Microsoft.EntityFrameworkCore.Query;
+using System.Collections.Generic;
 using System.Reflection;
 
 public class SqlServer2008QueryTranslationPostprocessorFactory(
@@ -26,7 +29,7 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
             queryCompilationContext);
 
     public class SqlServer2008QueryTranslationPostprocessor(QueryTranslationPostprocessorDependencies dependencies, RelationalQueryTranslationPostprocessorDependencies relationalDependencies, QueryCompilationContext queryCompilationContext) :
-        RelationalQueryTranslationPostprocessor(dependencies, relationalDependencies, queryCompilationContext)
+        RelationalQueryTranslationPostprocessor(dependencies, relationalDependencies, (RelationalQueryCompilationContext)queryCompilationContext)
     {
         public override Expression Process(Expression query)
         {
@@ -38,23 +41,12 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
             Expression root,
             ISqlExpressionFactory sqlExpressionFactory) : ExpressionVisitor
         {
-
-            private static readonly MethodInfo GenerateOuterColumnAccessor;
-            private static readonly Type TableReferenceExpressionType;
-
             private readonly Expression root = root;
             private readonly ISqlExpressionFactory sqlExpressionFactory = sqlExpressionFactory;
-            static Offset2RowNumberConvertVisitor()
-            {
-                var method = typeof(SelectExpression).GetMethod("GenerateOuterColumn", BindingFlags.NonPublic | BindingFlags.Instance);
+            private const string SubTableName = "subTbl";
+            private const string RowColumnName = "Row";
 
-                if (!typeof(ColumnExpression).IsAssignableFrom(method?.ReturnType))
-                    throw new InvalidOperationException("SelectExpression.GenerateOuterColumn() is not found.");
-
-                var @params = method.GetParameters();
-                TableReferenceExpressionType = @params.First().ParameterType;
-                GenerateOuterColumnAccessor = method;
-            }
+            private const string _projectionMappingProp = "_projectionMapping";
 
             protected override Expression VisitExtension(Expression node)
             {
@@ -84,53 +76,72 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     ? oldOrderings.ToList()
                     : [];
 
-                // 更新表达式
-                selectExpression = selectExpression.Update([.. selectExpression.Projection],
-                                                           [.. selectExpression.Tables],
-                                                           selectExpression.Predicate,
-                                                           [.. selectExpression.GroupBy],
-                                                           selectExpression.Having,
-                                                           orderings: newOrderings,
-                                                           limit: null,
-                                                           offset: null);
-
-
-                selectExpression.PushdownIntoSubquery();
-
                 var rowOrderings = oldOrderings.Any()
                     ? oldOrderings
                     : [new OrderingExpression(new SqlFragmentExpression("(SELECT 1)"), true)];
 
-                var subQuery = selectExpression.Tables[0];
-                var projection = new RowNumberExpression([], rowOrderings, oldOffset.TypeMapping);
-                var left = GenerateOuterColumnAccessor.Invoke(subQuery
-                    ,
+                var oldSelect = selectExpression;
+
+                var rowNumberExpression = new RowNumberExpression([], rowOrderings, oldOffset.TypeMapping);
+                // 创建子查询
+                IReadOnlyList<ProjectionExpression> projections =
                     [
-                        Activator.CreateInstance(TableReferenceExpressionType, [subQuery,subQuery.Alias!])!,
-                        projection,
-                        "row",
-                        true
-                    ]) as ColumnExpression;
+                    new ProjectionExpression(rowNumberExpression, RowColumnName),];
 
-                selectExpression.ApplyPredicate(sqlExpressionFactory.GreaterThan(left!, oldOffset));
+                var subquery = new SelectExpression(
+                    SubTableName,
+                    oldSelect.Tables,
+                    oldSelect.Predicate,
+                    oldSelect.GroupBy,
+                    oldSelect.Having,
+                    [.. oldSelect.Projection, .. projections],
+                    oldSelect.IsDistinct,
+                    [],//排序已经在rowNumber中了
+                    null,
+                    null,
+                    null,
+                    null);
 
-                if (oldLimit != null)
+                //新的条件:
+                var newPredicate = sqlExpressionFactory.Fragment($"({SubTableName}.[{RowColumnName}] > @__p_0) AND ({SubTableName}.[{RowColumnName}] <= @__p_0 + @__p_1)");
+
+                //新的Projection:
+                var newProjections = oldSelect.Projection.Select(e =>
                 {
-                    if (oldOrderings.Count == 0)
+                    var retn = e;
+                    if (e != null && e.Expression is ColumnExpression col)
                     {
-                        selectExpression.ApplyPredicate(sqlExpressionFactory.LessThanOrEqual(left, sqlExpressionFactory.Add(oldOffset, oldLimit)));
+                        var newCol = new ColumnExpression(col.Name, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
+                        return new ProjectionExpression(newCol, e.Alias);
                     }
-                    else
-                    {
-                        // 这里不支持子查询的 OrderBy 操作
-                        selectExpression.ApplyLimit(oldLimit);
-                    }
-                }
-                return selectExpression;
+                    return e;
+                }).ToList();
 
+                // 创建新的 SelectExpression，将子查询作为来源
+                var newSelect = new SelectExpression(
+                    oldSelect.Alias,
+                   [subquery],
+                 newPredicate,//条件为offset.limit
+                  oldSelect.GroupBy,
+                   oldSelect.Having,
+               newProjections, //oldSelect.Projection,
+                 oldSelect.IsDistinct,
+                [],
+                  null,
+                   null,
+                    null,
+               null);
+
+                //使用反射替换_projectionMapping变量:
+                var _projectionMapping = typeof(SelectExpression).GetField(_projectionMappingProp, BindingFlags.NonPublic | BindingFlags.Instance);
+                _projectionMapping.SetValue(newSelect, _projectionMapping.GetValue(oldSelect));
+
+                return newSelect;
             }
         }
     }
 }
+
+#pragma warning restore EF1001 // Internal EF Core API usage.
 
 #endif
