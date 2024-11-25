@@ -103,7 +103,17 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null);
 
                 //新的条件:
-                var newPredicate = sqlExpressionFactory.Fragment($"({SubTableName}.[{RowColumnName}] > @__p_0) AND ({SubTableName}.[{RowColumnName}] <= @__p_0 + @__p_1)");
+                //var newPredicate = sqlExpressionFactory.Fragment($"({SubTableName}.[{RowColumnName}] > @__p_0) AND ({SubTableName}.[{RowColumnName}] <= @__p_0 + @__p_1)");
+
+                var and1 = sqlExpressionFactory.GreaterThan(
+                    new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
+                    oldOffset);
+                var and2 = sqlExpressionFactory.LessThanOrEqual(
+                    new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
+                    sqlExpressionFactory.Add(oldOffset, oldLimit));
+
+                var newPredicate = sqlExpressionFactory.AndAlso(and1, and2);
+
 
                 //新的Projection:
                 var newProjections = oldSelect.Projection.Select(e =>
@@ -121,20 +131,21 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                 var newSelect = new SelectExpression(
                     oldSelect.Alias,
                    [subquery],
-                 newPredicate,//条件为offset.limit
-                  oldSelect.GroupBy,
-                   oldSelect.Having,
-               newProjections, //oldSelect.Projection,
-                 oldSelect.IsDistinct,
-                [],
-                  null,
-                   null,
+                   newPredicate,//条件为offset.limit
+                   oldSelect.GroupBy,
+                    oldSelect.Having,
+                newProjections, //oldSelect.Projection,
+                  oldSelect.IsDistinct,
+                 [],
+                   null,//参数需要
                     null,
-               null);
+                     null,
+                null);
 
                 //使用反射替换_projectionMapping变量:
                 var _projectionMapping = typeof(SelectExpression).GetField(_projectionMappingProp, BindingFlags.NonPublic | BindingFlags.Instance);
                 _projectionMapping.SetValue(newSelect, _projectionMapping.GetValue(oldSelect));
+
 
                 return newSelect;
             }

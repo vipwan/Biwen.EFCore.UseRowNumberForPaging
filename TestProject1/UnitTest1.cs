@@ -17,8 +17,13 @@ namespace TestProject1
             //WHERE[t].[row] > @__p_0 AND[t].[row] <= @__p_0 + @__p_1
 
             using var dbContext = new MyDbContext();
-            var rawSql = dbContext.Users.Where(i => i.Id > 1).OrderBy(x => x.Id).Skip(10).Take(20).ToQueryString();
+            var rawSql = dbContext.Users.OrderBy(x => x.Id).Skip(10).Take(20).ToQueryString();
             Assert.Contains("ROW_NUMBER", rawSql);
+
+            //var list = dbContext.Users.OrderBy(x => x.Id).Skip(10).Take(20).ToList();
+            //Assert.NotNull(list);
+
+
         }
 
 
