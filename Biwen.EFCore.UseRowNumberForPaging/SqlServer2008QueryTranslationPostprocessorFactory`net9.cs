@@ -44,23 +44,17 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
             private readonly Expression root = root;
             private readonly ISqlExpressionFactory sqlExpressionFactory = sqlExpressionFactory;
             private const string SubTableName = "subTbl";
-            private const string RowColumnName = "Row";
+            private const string RowColumnName = "_Row_";//下标避免数据表存在字段
 
-            private const string _projectionMappingProp = "_projectionMapping";
+            private const string _mp = "_projectionMapping";
+            private static readonly FieldInfo ProjectionMapping = typeof(SelectExpression).GetField(_mp, BindingFlags.NonPublic | BindingFlags.Instance);
 
-            protected override Expression VisitExtension(Expression node)
+            protected override Expression VisitExtension(Expression node) => node switch
             {
-                if (node is ShapedQueryExpression shapedQueryExpression)
-                {
-                    return shapedQueryExpression.Update(Visit(shapedQueryExpression.QueryExpression), shapedQueryExpression.ShaperExpression);
-                }
-                if (node is SelectExpression se)
-                {
-                    node = VisitSelect(se);
-                    return node;
-                }
-                return base.VisitExtension(node);
-            }
+                ShapedQueryExpression shapedQueryExpression => shapedQueryExpression.Update(Visit(shapedQueryExpression.QueryExpression), shapedQueryExpression.ShaperExpression),
+                SelectExpression se => VisitSelect(se),
+                _ => base.VisitExtension(node)
+            };
 
             private SelectExpression VisitSelect(SelectExpression selectExpression)
             {
@@ -72,21 +66,23 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                 var oldOrderings = selectExpression.Orderings;
 
                 // 在子查询中 OrderBy 必须写 Top 数量
-                var newOrderings = oldOrderings.Count > 0 && (oldLimit != null || selectExpression == root)
-                    ? oldOrderings.ToList()
-                    : [];
+                var newOrderings = oldOrderings switch
+                {
+                    { Count: > 0 } when oldLimit != null || selectExpression == root => oldOrderings.ToList(),
+                    _ => []
+                };
 
-                var rowOrderings = oldOrderings.Any()
-                    ? oldOrderings
-                    : [new OrderingExpression(new SqlFragmentExpression("(SELECT 1)"), true)];
+                var rowOrderings = oldOrderings.Any() switch
+                {
+                    true => oldOrderings,
+                    false => [new OrderingExpression(new SqlFragmentExpression("(SELECT 1)"), true)]
+                };
 
                 var oldSelect = selectExpression;
 
                 var rowNumberExpression = new RowNumberExpression([], rowOrderings, oldOffset.TypeMapping);
                 // 创建子查询
-                IReadOnlyList<ProjectionExpression> projections =
-                    [
-                    new ProjectionExpression(rowNumberExpression, RowColumnName),];
+                IList<ProjectionExpression> projections = [new ProjectionExpression(rowNumberExpression, RowColumnName),];
 
                 var subquery = new SelectExpression(
                     SubTableName,
@@ -102,9 +98,7 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null,
                     null);
 
-                //新的条件:
-                //var newPredicate = sqlExpressionFactory.Fragment($"({SubTableName}.[{RowColumnName}] > @__p_0) AND ({SubTableName}.[{RowColumnName}] <= @__p_0 + @__p_1)");
-
+                //构造新的条件:
                 var and1 = sqlExpressionFactory.GreaterThan(
                     new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
                     oldOffset);
@@ -114,38 +108,34 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
 
                 var newPredicate = sqlExpressionFactory.AndAlso(and1, and2);
 
-
                 //新的Projection:
                 var newProjections = oldSelect.Projection.Select(e =>
                 {
-                    var retn = e;
-                    if (e != null && e.Expression is ColumnExpression col)
+                    if (e is { Expression: ColumnExpression col })
                     {
                         var newCol = new ColumnExpression(col.Name, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
                         return new ProjectionExpression(newCol, e.Alias);
                     }
                     return e;
-                }).ToList();
+                });
 
                 // 创建新的 SelectExpression，将子查询作为来源
                 var newSelect = new SelectExpression(
                     oldSelect.Alias,
-                   [subquery],
-                   newPredicate,//条件为offset.limit
-                   oldSelect.GroupBy,
+                    [subquery],
+                    newPredicate,
+                    oldSelect.GroupBy,
                     oldSelect.Having,
-                newProjections, //oldSelect.Projection,
-                  oldSelect.IsDistinct,
-                 [],
-                   null,//参数需要
+                    [.. newProjections],
+                    oldSelect.IsDistinct,
+                    [],
                     null,
-                     null,
-                null);
+                    null,
+                    null,
+                    null);
 
                 //使用反射替换_projectionMapping变量:
-                var _projectionMapping = typeof(SelectExpression).GetField(_projectionMappingProp, BindingFlags.NonPublic | BindingFlags.Instance);
-                _projectionMapping.SetValue(newSelect, _projectionMapping.GetValue(oldSelect));
-
+                ProjectionMapping.SetValue(newSelect, ProjectionMapping.GetValue(oldSelect));
 
                 return newSelect;
             }
