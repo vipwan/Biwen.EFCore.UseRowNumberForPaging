@@ -5,7 +5,7 @@
 // Bring back support for UseRowNumberForPaging in EntityFrameworkCore 9.0/8.0/7.0/6.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005.
 // Modify Date: 2024-11-25 18:12:51 SqlServer2008QueryTranslationPostprocessorFactory`net9.cs
 
-#if NET9_0_OR_GREATER
+#if NET9_0
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
 
