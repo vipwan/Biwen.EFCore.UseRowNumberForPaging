@@ -13,7 +13,6 @@ namespace Biwen.EFCore.UseRowNumberForPaging;
 
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections.Generic;
-using System.Reflection;
 
 public class SqlServer2008QueryTranslationPostprocessorFactory(
     QueryTranslationPostprocessorDependencies dependencies,
@@ -45,9 +44,6 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
             private readonly ISqlExpressionFactory sqlExpressionFactory = sqlExpressionFactory;
             private const string SubTableName = "subTbl";
             private const string RowColumnName = "_Row_";//下标避免数据表存在字段
-
-            private const string _mp = "_projectionMapping";
-            private static readonly FieldInfo ProjectionMapping = typeof(SelectExpression).GetField(_mp, BindingFlags.NonPublic | BindingFlags.Instance);
 
             protected override Expression VisitExtension(Expression node) => node switch
             {
@@ -119,6 +115,7 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     return e;
                 });
 
+
                 // 创建新的 SelectExpression，将子查询作为来源
                 var newSelect = new SelectExpression(
                     oldSelect.Alias,
@@ -134,8 +131,16 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null,
                     null);
 
-                //使用反射替换_projectionMapping变量:
-                ProjectionMapping.SetValue(newSelect, ProjectionMapping.GetValue(oldSelect));
+                // projectionMapping replace
+                var pm = new ProjectionMember();
+                var projectionMapping = new Dictionary<ProjectionMember, Expression>
+                {
+                    {
+                        pm,
+                        oldSelect.GetProjection(new ProjectionBindingExpression(null,pm,null))
+                    }
+                };
+                newSelect.ReplaceProjection(projectionMapping);
 
                 return newSelect;
             }
