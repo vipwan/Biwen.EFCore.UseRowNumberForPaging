@@ -11,9 +11,9 @@ public class MyDbContext : DbContext
     {
         optionsBuilder.UseSqlServer(
             @"Server=(localdb)\mssqllocaldb;Database=Users;Integrated Security=True",
-            x =>
+            o =>
             {
-                x.UseRowNumberForPaging();
+                o.UseRowNumberForPaging();
             });
     }
 }

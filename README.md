@@ -10,6 +10,6 @@ The same as original UseRowNumberForPaging method
 using Biwen.EFCore.UseRowNumberForPaging;
 
 // UseRowNumberForPaging()
-optionsBuilder.UseSqlServer("connection string", i => i.UseRowNumberForPaging());
+optionsBuilder.UseSqlServer("connection string", o => o.UseRowNumberForPaging());
 
 ```

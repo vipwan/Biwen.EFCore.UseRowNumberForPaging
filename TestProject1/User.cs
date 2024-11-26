@@ -1,5 +1,4 @@
-﻿
-namespace TestProject1;
+﻿namespace TestProject1;
 
 public class User
 {
