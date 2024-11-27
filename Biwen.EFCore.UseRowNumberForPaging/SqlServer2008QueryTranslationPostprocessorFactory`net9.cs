@@ -70,13 +70,6 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                 var oldLimit = selectExpression.Limit;
                 var oldOrderings = selectExpression.Orderings;
 
-                // 在子查询中 OrderBy 必须写 Top 数量
-                var newOrderings = oldOrderings switch
-                {
-                    { Count: > 0 } when oldLimit != null || selectExpression == root => oldOrderings.ToList(),
-                    _ => []
-                };
-
                 var rowOrderings = oldOrderings.Any() switch
                 {
                     true => oldOrderings,
