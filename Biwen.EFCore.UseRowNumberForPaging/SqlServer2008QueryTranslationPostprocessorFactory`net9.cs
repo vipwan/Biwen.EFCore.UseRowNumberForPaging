@@ -16,18 +16,21 @@ using System.Collections.Generic;
 
 public class SqlServer2008QueryTranslationPostprocessorFactory(
     QueryTranslationPostprocessorDependencies dependencies,
-    RelationalQueryTranslationPostprocessorDependencies relationalDependencies) : IQueryTranslationPostprocessorFactory
+    RelationalQueryTranslationPostprocessorDependencies relationalDependencies) :
+    IQueryTranslationPostprocessorFactory
 {
     private readonly QueryTranslationPostprocessorDependencies _dependencies = dependencies;
     private readonly RelationalQueryTranslationPostprocessorDependencies _relationalDependencies = relationalDependencies;
 
-    public virtual QueryTranslationPostprocessor Create(QueryCompilationContext queryCompilationContext)
-        => new SqlServer2008QueryTranslationPostprocessor(
+    public virtual QueryTranslationPostprocessor Create(QueryCompilationContext queryCompilationContext) => new SqlServer2008QueryTranslationPostprocessor(
             _dependencies,
             _relationalDependencies,
             queryCompilationContext);
 
-    public class SqlServer2008QueryTranslationPostprocessor(QueryTranslationPostprocessorDependencies dependencies, RelationalQueryTranslationPostprocessorDependencies relationalDependencies, QueryCompilationContext queryCompilationContext) :
+    internal class SqlServer2008QueryTranslationPostprocessor(
+        QueryTranslationPostprocessorDependencies dependencies,
+        RelationalQueryTranslationPostprocessorDependencies relationalDependencies,
+        QueryCompilationContext queryCompilationContext) :
         RelationalQueryTranslationPostprocessor(dependencies, relationalDependencies, (RelationalQueryCompilationContext)queryCompilationContext)
     {
         public override Expression Process(Expression query)
@@ -36,6 +39,12 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
             query = new Offset2RowNumberConvertVisitor(query, RelationalDependencies.SqlExpressionFactory).Visit(query);
             return query;
         }
+
+        /// <summary>
+        /// 将 Offset 转换为 RowNumber
+        /// </summary>
+        /// <param name="root"></param>
+        /// <param name="sqlExpressionFactory"></param>
         internal class Offset2RowNumberConvertVisitor(
             Expression root,
             ISqlExpressionFactory sqlExpressionFactory) : ExpressionVisitor
@@ -95,35 +104,35 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null);
 
                 //构造新的条件:
-                var and1 = sqlExpressionFactory.GreaterThan(
+                var andLeft = sqlExpressionFactory.GreaterThan(
                     new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
                     oldOffset);
-                var and2 = sqlExpressionFactory.LessThanOrEqual(
+                var andRight = sqlExpressionFactory.LessThanOrEqual(
                     new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
                     sqlExpressionFactory.Add(oldOffset, oldLimit));
 
-                var newPredicate = sqlExpressionFactory.AndAlso(and1, and2);
+                var newPredicate = sqlExpressionFactory.AndAlso(andLeft, andRight);
 
                 //新的Projection:
                 var newProjections = oldSelect.Projection.Select(e =>
                 {
                     if (e is { Expression: ColumnExpression col })
                     {
+                        // 替换为子查询的别名
                         var newCol = new ColumnExpression(col.Name, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
                         return new ProjectionExpression(newCol, e.Alias);
                     }
                     return e;
                 });
 
-
                 // 创建新的 SelectExpression，将子查询作为来源
                 var newSelect = new SelectExpression(
                     oldSelect.Alias,
-                    [subquery],
-                    newPredicate,
+                    [subquery],//子查询
+                    newPredicate,//新的条件
                     oldSelect.GroupBy,
                     oldSelect.Having,
-                    [.. newProjections],
+                    [.. newProjections],//新的Projection
                     oldSelect.IsDistinct,
                     [],
                     null,
@@ -131,14 +140,11 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null,
                     null);
 
-                // projectionMapping replace
+                // replace ProjectionMapping 
                 var pm = new ProjectionMember();
                 var projectionMapping = new Dictionary<ProjectionMember, Expression>
                 {
-                    {
-                        pm,
-                        oldSelect.GetProjection(new ProjectionBindingExpression(null,pm,null))
-                    }
+                    [pm] = oldSelect.GetProjection(new ProjectionBindingExpression(null, pm, null))
                 };
                 newSelect.ReplaceProjection(projectionMapping);
 
