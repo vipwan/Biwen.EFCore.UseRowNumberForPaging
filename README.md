@@ -13,3 +13,8 @@ using Biwen.EFCore.UseRowNumberForPaging;
 optionsBuilder.UseSqlServer("connection string", o => o.UseRowNumberForPaging());
 
 ```
+
+# Note
+
+自`2.1.1`后不再兼容NET5/6/7
+
