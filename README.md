@@ -16,5 +16,5 @@ optionsBuilder.UseSqlServer("connection string", o => o.UseRowNumberForPaging())
 
 # Note
 
-自`2.1.1`后不再兼容NET5/6/7
+自`2.1.1`后不再兼容NET5/6/7,如需早期兼容请使用`2.1.1`及以前版本!
 
