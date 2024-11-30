@@ -36,22 +36,19 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
         public override Expression Process(Expression query)
         {
             query = base.Process(query);
-            query = new Offset2RowNumberConvertVisitor(query, RelationalDependencies.SqlExpressionFactory).Visit(query);
+            query = new Offset2RowNumberConvertVisitor(RelationalDependencies.SqlExpressionFactory).Visit(query);
             return query;
         }
 
         /// <summary>
         /// 将 Offset 转换为 RowNumber
         /// </summary>
-        /// <param name="root"></param>
         /// <param name="sqlExpressionFactory"></param>
         internal class Offset2RowNumberConvertVisitor(
-            Expression root,
             ISqlExpressionFactory sqlExpressionFactory) : ExpressionVisitor
         {
-            private readonly Expression root = root;
             private readonly ISqlExpressionFactory sqlExpressionFactory = sqlExpressionFactory;
-            private const string SubTableName = "subTbl";
+            private const string SubTableName = "t";
             private const string RowColumnName = "_Row_";//下标避免数据表存在字段
 
             protected override Expression VisitExtension(Expression node) => node switch
@@ -97,14 +94,19 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null);
 
                 //构造新的条件:
-                var andLeft = sqlExpressionFactory.GreaterThan(
-                    new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
-                    oldOffset);
-                var andRight = sqlExpressionFactory.LessThanOrEqual(
-                    new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
-                    sqlExpressionFactory.Add(oldOffset, oldLimit));
-
-                var newPredicate = sqlExpressionFactory.AndAlso(andLeft, andRight);
+                //存在 Limit 时，条件为 Row > Offset AND Row <= Offset + Limit
+                //不存在 Limit 时，条件为 Row > Offset
+                var newPredicate = oldLimit is not null
+                    ? sqlExpressionFactory.AndAlso(
+                        sqlExpressionFactory.GreaterThan(
+                            new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
+                            oldOffset),
+                        sqlExpressionFactory.LessThanOrEqual(
+                            new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
+                            sqlExpressionFactory.Add(oldOffset, oldLimit)))
+                    : sqlExpressionFactory.GreaterThan(
+                        new ColumnExpression(RowColumnName, SubTableName, typeof(int), null, true),
+                        oldOffset);
 
                 //新的Projection:
                 var newProjections = oldSelect.Projection.Select(e =>
