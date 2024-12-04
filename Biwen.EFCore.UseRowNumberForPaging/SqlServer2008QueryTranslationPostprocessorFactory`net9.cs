@@ -77,15 +77,15 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
 
                 var rowNumberExpression = new RowNumberExpression([], rowOrderings, oldOffset.TypeMapping);
                 // 创建子查询
-                IList<ProjectionExpression> projections = [new ProjectionExpression(rowNumberExpression, RowColumnName),];
+                IList<ProjectionExpression> projection = [new ProjectionExpression(rowNumberExpression, RowColumnName),];
 
-                var subquery = new SelectExpression(
+                var subQuery = new SelectExpression(
                     SubTableName,
                     oldSelect.Tables,
                     oldSelect.Predicate,
                     oldSelect.GroupBy,
                     oldSelect.Having,
-                    [.. oldSelect.Projection, .. projections],
+                    [.. oldSelect.Projection, .. projection],
                     oldSelect.IsDistinct,
                     [],//排序已经在rowNumber中了
                     null,
@@ -109,25 +109,25 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                         oldOffset);
 
                 //新的Projection:
-                var newProjections = oldSelect.Projection.Select(e =>
+                var newProjection = oldSelect.Projection.Select(exp =>
                 {
-                    if (e is { Expression: ColumnExpression col })
+                    if (exp is { Expression: ColumnExpression col })
                     {
                         // 替换为子查询的别名
                         var newCol = new ColumnExpression(col.Name, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
-                        return new ProjectionExpression(newCol, e.Alias);
+                        return new ProjectionExpression(newCol, exp.Alias);
                     }
-                    return e;
+                    return exp;
                 });
 
                 // 创建新的 SelectExpression，将子查询作为来源
                 var newSelect = new SelectExpression(
                     oldSelect.Alias,
-                    [subquery],//子查询
+                    [subQuery],//子查询
                     newPredicate,//新的条件
                     oldSelect.GroupBy,
                     oldSelect.Having,
-                    [.. newProjections],//新的Projection
+                    [.. newProjection],//新的Projection
                     oldSelect.IsDistinct,
                     [],
                     null,
@@ -137,9 +137,10 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
 
                 // replace ProjectionMapping 
                 var pm = new ProjectionMember();
+                var oldProjection = oldSelect.GetProjection(new ProjectionBindingExpression(null, pm, null));
                 var projectionMapping = new Dictionary<ProjectionMember, Expression>
                 {
-                    [pm] = oldSelect.GetProjection(new ProjectionBindingExpression(null, pm, null))
+                    [pm] = oldProjection
                 };
                 newSelect.ReplaceProjection(projectionMapping);
 
