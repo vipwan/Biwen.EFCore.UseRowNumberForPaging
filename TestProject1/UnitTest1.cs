@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
-
 namespace TestProject1
 {
     public class UnitTest1
     {
+
+
+
         [Fact]
-        public void Test1()
+        public void SimpleTest()
         {
             //SELECT[t].[Id], [t].[Age], [t].[Email], [t].[Name]
             //FROM(
@@ -21,6 +23,29 @@ namespace TestProject1
 
             var rawSql2 = dbContext.Users.OrderBy(x => x.Id).Skip(10).Take(20).ToQueryString();
             Assert.Contains("ROW_NUMBER", rawSql2);
+
+            //makesure include must be using AsSplitQuery()
+            var rawSql3 = dbContext.Users.Include(x => x.Hobbies).OrderBy(x => x.Id).Skip(10).Take(20).ToQueryString();
+            Assert.Contains("ROW_NUMBER", rawSql3);
+
+        }
+
+        [Fact]
+        public void IncludeTest()
+        {
+            using var dbContext = new MyDbContext();
+
+            var rawSql = dbContext.Users.Include(x => x.Hobbies).OrderByDescending(x => x.Id)
+                .Skip(10).Take(20).ToQueryString();
+
+            Assert.Contains("ROW_NUMBER", rawSql);
+
+
+            var rawSql2 = dbContext.Hobbies.Include(x => x.User).OrderBy(x => x.Id)
+                .ThenByDescending(x => x.User.Id).Skip(10).Take(20).ToQueryString();
+
+            Assert.Contains("ROW_NUMBER", rawSql2);
+
 
         }
 

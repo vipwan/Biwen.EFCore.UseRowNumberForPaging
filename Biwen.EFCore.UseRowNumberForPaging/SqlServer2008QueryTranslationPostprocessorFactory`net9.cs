@@ -13,6 +13,7 @@ namespace Biwen.EFCore.UseRowNumberForPaging;
 
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections.Generic;
+using System.Reflection;
 
 public class SqlServer2008QueryTranslationPostprocessorFactory(
     QueryTranslationPostprocessorDependencies dependencies,
@@ -44,12 +45,14 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
         /// 将 Offset 转换为 RowNumber
         /// </summary>
         /// <param name="sqlExpressionFactory"></param>
-        internal class Offset2RowNumberConvertVisitor(
-            ISqlExpressionFactory sqlExpressionFactory) : ExpressionVisitor
+        internal class Offset2RowNumberConvertVisitor(ISqlExpressionFactory sqlExpressionFactory) : ExpressionVisitor
         {
             private readonly ISqlExpressionFactory sqlExpressionFactory = sqlExpressionFactory;
             private const string SubTableName = "t";
             private const string RowColumnName = "_Row_";//下标避免数据表存在字段
+
+            private static readonly FieldInfo _clientProjections = typeof(SelectExpression).GetField("_clientProjections", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static readonly FieldInfo _projectionMapping = typeof(SelectExpression).GetField("_projectionMapping", BindingFlags.NonPublic | BindingFlags.Instance);
 
             protected override Expression VisitExtension(Expression node) => node switch
             {
@@ -135,14 +138,9 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     null,
                     null);
 
-                // replace ProjectionMapping 
-                var pm = new ProjectionMember();
-                var oldProjection = oldSelect.GetProjection(new ProjectionBindingExpression(null, pm, null));
-                var projectionMapping = new Dictionary<ProjectionMember, Expression>
-                {
-                    [pm] = oldProjection
-                };
-                newSelect.ReplaceProjection(projectionMapping);
+                // replace ProjectionMapping & ClientProjections
+                _projectionMapping.SetValue(newSelect, _projectionMapping.GetValue(oldSelect));
+                _clientProjections.SetValue(newSelect, _clientProjections.GetValue(oldSelect));
 
                 return newSelect;
             }

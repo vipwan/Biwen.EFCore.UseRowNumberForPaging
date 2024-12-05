@@ -5,6 +5,8 @@
 // Bring back support for UseRowNumberForPaging in EntityFrameworkCore 9.0/8.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005.
 // Modify Date: 2024-11-15 14:42:12 SqlServerDbContextOptionsBuilderExtensions.cs
 
+using Microsoft.EntityFrameworkCore;
+
 namespace Biwen.EFCore.UseRowNumberForPaging;
 
 public static class SqlServerDbContextOptionsBuilderExtensions
@@ -16,8 +18,13 @@ public static class SqlServerDbContextOptionsBuilderExtensions
     /// <returns></returns>
     public static SqlServerDbContextOptionsBuilder UseRowNumberForPaging(this SqlServerDbContextOptionsBuilder optionsBuilder)
     {
+        //fix Include() query
+        // UseRowNumberForPaging must be used with UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+
         ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder
             .ReplaceService<IQueryTranslationPostprocessorFactory, SqlServer2008QueryTranslationPostprocessorFactory>();
+
         return optionsBuilder;
     }
 }

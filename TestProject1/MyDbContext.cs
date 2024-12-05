@@ -5,7 +5,13 @@ namespace TestProject1;
 
 public class MyDbContext : DbContext
 {
+
     public DbSet<User> Users { get; set; } = null!;
+
+
+    public DbSet<Hobby> Hobbies { get; set; } = null!;
+
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
