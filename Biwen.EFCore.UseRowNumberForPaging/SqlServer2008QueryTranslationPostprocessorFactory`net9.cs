@@ -13,6 +13,7 @@ namespace Biwen.EFCore.UseRowNumberForPaging;
 
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 public class SqlServer2008QueryTranslationPostprocessorFactory(
@@ -114,13 +115,9 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                 //新的Projection:
                 var newProjection = oldSelect.Projection.Select(exp =>
                 {
-                    if (exp is { Expression: ColumnExpression col })
-                    {
-                        // 替换为子查询的别名
-                        var newCol = new ColumnExpression(exp.Alias, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
-                        return new ProjectionExpression(newCol, exp.Alias);
-                    }
-                    return exp;
+                    //将任意表达式的来源替换为子查询的字段:
+                    var newCol = new ColumnExpression(exp.Alias, SubTableName, exp.Expression.Type, exp.Expression.TypeMapping, true);
+                    return new ProjectionExpression(newCol, exp.Alias);
                 });
 
                 // 创建新的 SelectExpression，将子查询作为来源

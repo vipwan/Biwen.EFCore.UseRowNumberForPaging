@@ -67,5 +67,24 @@ namespace TestProject1
             Assert.Contains("ROW_NUMBER", rawSql);
         }
 
+        [Fact]
+        public void DateOnlyTranslateTest()
+        {
+            using var dbContext = new MyDbContext();
+
+            var rawSql = dbContext.Users
+                .Select(x => new { x.Id, Alias = x.Email, Date = DateOnly.FromDateTime(x.CreatedDate) }) //alias
+                .OrderByDescending(x => x.Id)
+                .Skip(10)
+                .Take(20)
+                .ToQueryString();
+
+            //_context.Set<Post>().OrderBy(e => e.CreatedOn).Skip(10).Take(10).Select(e => new { Date = e.CreatedOn }).ToListAsync();
+
+            Assert.Contains("ROW_NUMBER", rawSql);
+        }
+
+
+
     }
 }
