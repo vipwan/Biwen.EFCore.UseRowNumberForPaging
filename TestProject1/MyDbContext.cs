@@ -15,6 +15,9 @@ public class MyDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        // debug sql
+        optionsBuilder.LogTo(Console.WriteLine);
+
         optionsBuilder.UseSqlServer(
             @"Server=(localdb)\mssqllocaldb;Database=Users;Integrated Security=True",
             o =>

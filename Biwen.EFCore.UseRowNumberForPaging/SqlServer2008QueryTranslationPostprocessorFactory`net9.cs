@@ -117,7 +117,7 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     if (exp is { Expression: ColumnExpression col })
                     {
                         // 替换为子查询的别名
-                        var newCol = new ColumnExpression(col.Name, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
+                        var newCol = new ColumnExpression(exp.Alias, SubTableName, col.Type, col.TypeMapping, col.IsNullable);
                         return new ProjectionExpression(newCol, exp.Alias);
                     }
                     return exp;

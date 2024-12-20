@@ -50,5 +50,22 @@ namespace TestProject1
         }
 
 
+        [Fact]
+        public void AliasTest()
+        {
+            using var dbContext = new MyDbContext();
+
+            var rawSql = dbContext.Users
+                .Select(x => new { x.Id, Alias = x.Email }) //alias
+                .OrderByDescending(x => x.Id)
+                .Skip(10)
+                .Take(20)
+                .ToQueryString();
+
+            //_context.Set<Post>().OrderBy(e => e.CreatedOn).Skip(10).Take(10).Select(e => new { Date = e.CreatedOn }).ToListAsync();
+
+            Assert.Contains("ROW_NUMBER", rawSql);
+        }
+
     }
 }
