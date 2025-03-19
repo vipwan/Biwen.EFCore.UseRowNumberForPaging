@@ -125,8 +125,8 @@ public class SqlServer2008QueryTranslationPostprocessorFactory(
                     oldSelect.Alias,
                     [subQuery],//子查询
                     newPredicate,//新的条件
-                    oldSelect.GroupBy,
-                    oldSelect.Having,
+                    groupBy: [],
+                    having: null,
                     [.. newProjection],//新的Projection
                     oldSelect.IsDistinct,
                     [],

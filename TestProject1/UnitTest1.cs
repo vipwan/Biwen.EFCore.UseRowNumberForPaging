@@ -85,6 +85,36 @@ namespace TestProject1
         }
 
 
+        [Fact]
+        public void GroupingTest()
+        {
 
+            //var iQuery = from e in this._context.Set()
+            //             where e.Exmblref.CompareTo("2503") > 0
+            //             group e by e.Exmblref into gg
+            //             select new
+            //             {
+            //                 refno = gg.Key,
+            //                 count = gg.Count()
+            //             };
+            //var iQuery2 = iQuery.Skip(0).Take(2);
+
+            using var dbContext = new MyDbContext();
+
+            var iquery = from e in dbContext.Users
+                         where e.CreatedDate < DateTime.Now
+                         group e by e.Email into gg
+                         select new
+                         {
+                             Email = gg.Key,
+                             Count = gg.Count()
+                         };
+            //having
+            iquery = iquery.Where(x => x.Count > 1);
+
+            var rawSql = iquery.OrderByDescending(x => x.Count).Skip(10).Take(20).ToQueryString();
+
+            Assert.Contains("ROW_NUMBER", rawSql);
+        }
     }
 }
