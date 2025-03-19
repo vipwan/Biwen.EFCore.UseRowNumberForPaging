@@ -31,7 +31,7 @@ var iquery = from e in dbContext.Users
                 };
 //having
 iquery = iquery.Where(x => x.Count > 1);
-var list = iquery.OrderByDescending(x => x.Count).Skip(10).Take(20);
+var list = iquery.OrderByDescending(x => x.Count).Skip(10).Take(20).ToList();
 ```
 
 Generated SQL
