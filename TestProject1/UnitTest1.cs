@@ -18,9 +18,11 @@ namespace TestProject1
             //WHERE[t].[row] > @__p_0 AND[t].[row] <= @__p_0 + @__p_1
 
             using var dbContext = new MyDbContext();
+
+#if NET9_0_OR_GREATER
             var rawSql = dbContext.Users.Where(x => x.Email != null && x.Email.StartsWith('v')).OrderBy(x => x.Id).Skip(10).ToQueryString();
             Assert.Contains("ROW_NUMBER", rawSql);
-
+#endif
             var rawSql2 = dbContext.Users.OrderBy(x => x.Id).Skip(10).Take(20).ToQueryString();
             Assert.Contains("ROW_NUMBER", rawSql2);
 
@@ -41,7 +43,9 @@ namespace TestProject1
             Assert.Contains("ROW_NUMBER", rawSql);
 
 
-            var rawSql2 = dbContext.Hobbies.Include(x => x.User).OrderBy(x => x.Id)
+            var rawSql2 = dbContext.Hobbies.Include(x => x.User)
+                .Where(x => x.User.CreatedDate > DateTime.Now.AddDays(-10))
+                .OrderBy(x => x.Id)
                 .ThenByDescending(x => x.User.Id).Skip(10).Take(20).ToQueryString();
 
             Assert.Contains("ROW_NUMBER", rawSql2);

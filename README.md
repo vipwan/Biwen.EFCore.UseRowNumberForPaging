@@ -1,8 +1,8 @@
 ﻿# Biwen.EFCore.UseRowNumberForPaging
 
-Bring back support for [UseRowNumberForPaging](https://docs.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.infrastructure.sqlserverdbcontextoptionsbuilder.userownumberforpaging?view=efcore-3.0) in EntityFrameworkCore 9.0/8.0/7.0/6.0
+Bring back support for [UseRowNumberForPaging](https://docs.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.infrastructure.sqlserverdbcontextoptionsbuilder.userownumberforpaging?view=efcore-3.0) in EntityFrameworkCore 10.0/9.0/8.0/7.0/6.0
 
-- for EFCore 8.0/9.0 using `2.0.0`+
+- for EFCore 8.0/9.0/10.0 using `2.0.0`+
 - for EFCore 6.0/7.0/8.0 using `1.0.0`
 
 # Usage

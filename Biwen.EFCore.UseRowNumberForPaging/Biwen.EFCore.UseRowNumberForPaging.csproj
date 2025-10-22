@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+		<TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
 		<Version>2.3.3</Version>
 		<Authors>万雅虎</Authors>
 		<LangVersion>latest</LangVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<RepositoryUrl>https://github.com/vipwan/Biwen.EFCore.UseRowNumberForPaging</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/vipwan/Biwen.EFCore.UseRowNumberForPaging</PackageProjectUrl>
-		<Description>Bring back support for UseRowNumberForPaging in EntityFrameworkCore 9.0/8.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005-2008.</Description>
+		<Description>Bring back support for UseRowNumberForPaging in EntityFrameworkCore 10/9.0/8.0 Use a ROW_NUMBER() in queries instead of OFFSET/FETCH. This method is backwards-compatible to SQL Server 2005-2008.</Description>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<AssemblyVersion>$(Version)</AssemblyVersion>
@@ -16,7 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Biwen.AutoClassGen" Version="1.5.5" PrivateAssets="all" />
+		<PackageReference Include="Biwen.AutoClassGen" Version="1.8.7" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
 	</ItemGroup>
 
@@ -25,6 +25,9 @@
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="[9.0.3,10.0.0)" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="[10.0.0-rc.2.25502.107,11.0.0)" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
